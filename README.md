@@ -10,7 +10,7 @@
 
 | Nombre Completo | Rol en el Proyecto | Contacto (GitHub/Email) |
 | :--- | :--- | :--- |
-| Duran Chambi Benjamin Ricardo | **Arquitecto de Backend & Proxy:** Encargado de la VM-PROXY y VM-APP (Nginx/Node.js). Diseño de la lógica de encolamiento. | Ricardo |
+| Duran Chambi Benjamin Ricardo | **Arquitecto de Backend & Proxy:** Encargado de la VM-PROXY y VM-APP (Nginx/Node.js). Diseño de la lógica de encolamiento. | [ricmax945](https://github.com/ricmax945) |
 | Escobar Moscoso Jorge Gabriel | **Administrador de Datos:** Encargado de la VM-REDIS. Gestión de persistencia en memoria y optimización de consultas. | [jogaesmo](https://github.com/jogaesmo) |
 | Onofre Alanoca Roy | **Ingeniero de Observabilidad:** Encargado de la VM-MON (Prometheus/Grafana). Monitoreo y auditoría de métricas. | [RoyOnofre](https://github.com/RoyOnofre) |
 
