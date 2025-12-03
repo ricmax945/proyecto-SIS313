@@ -1,272 +1,64 @@
 # proyecto-SIS313
 Es el repositorio del proyecto de SIS313
 
-================================================================================
-🚀  PROYECTO FINAL SIS313: SISTEMA DE SALAS DE ESPERA Y FILAS VIRTUALES
-================================================================================
+🚀 Proyecto Final SIS313: Sistema de Salas de Espera y Filas Virtuales (Virtual Queue)Asignatura: SIS313: Infraestructura, Plataformas Tecnológicas y RedesSemestre: 2/2025 1Docente: Ing. Marcelo Quispe Ortega 2👥 Miembros del Equipo (Grupo Virtual Queue)Nombre CompletoRol en el ProyectoContacto (GitHub/Email)Duran Chambi Benjamin RicardoArquitecto de Backend & Proxy: Encargado de la VM-PROXY y VM-APP (Nginx/Node.js). Diseño de la lógica de encolamiento. 3RicardoEscobar Moscoso Jorge GabrielAdministrador de Datos: Encargado de la VM-REDIS. Gestión de persistencia en memoria y optimización. 4jogaesmoOnofre Alanoca RoyIngeniero de Observabilidad: Encargado de la VM-MON (Prometheus/Grafana). Monitoreo y auditoría. 5RoyOnofre🎯 I. Objetivo del ProyectoObjetivo: Diseñar e implementar una arquitectura de Cola Virtual (Virtual Waiting Room) distribuida para el sistema universitario SUNiver, capaz de interceptar el 100% del tráfico entrante, aplicar Rate Limiting para limitar la concurrencia a un umbral seguro (ej. 100 usuarios/minuto) y redirigir el exceso de tráfico a una sala de espera estática, garantizando así la disponibilidad del servicio crítico bajo condiciones de saturación. 6💡 II. Justificación e ImportanciaJustificación: El problema recurrente durante las fechas de inscripción es la Denegación de Servicio Involuntaria (saturación de usuarios), lo que genera una Falla de Continuidad Operacional (T1)7. Este proyecto es vital porque transforma el fallo en espera, convirtiendo un Error 503 en una espera ordenada8. Implementa Protección Centralizada (T5) mediante Nginx para desacoplar la carga masiva y Optimización Extrema (T4) utilizando Redis en RAM para gestionar la concurrencia a latencias de sub-milisegundos, resolviendo cuellos de botella de bases de datos tradicionales9.🛠️ III. Tecnologías y Conceptos Implementados3.1. Tecnologías ClaveNginx (VM-PROXY): Gateway y Reverse Proxy. Protege la topología interna y aplica el módulo limit_req para filtrar peticiones abusivas (Rate Limiting)10.Node.js (Express) (VM-APP): Servidor de Aplicación / Lógica. Ejecuta la lógica de "Portero": consulta el estado de la cola a Redis y decide si servir la página de Login o la Sala de Espera HTML11.Redis (VM-REDIS): Gestión de Estado Global (Memoria). Base de Datos NoSQL en memoria RAM. Mantiene el contador atómico del aforo en tiempo real, garantizando la "Verdad Única"12.Prometheus / Grafana (VM-MON): Observabilidad y Auditoría. Prometheus hace scraping de métricas de la aplicación, y Grafana visualiza la saturación de tráfico y el comportamiento de la cola13.Tailscale / Avahi (mDNS): Networking Transparente. Proporciona interconexión de las VMs mediante nombres de dominio .local, facilitando el descubrimiento de servicios sin IPs estáticas14.3.2. Conceptos de la Asignatura Puestos en Práctica (T1 - T6)Marca con un ✅ los temas avanzados de la asignatura que fueron implementados:Alta Disponibilidad (T2) y Tolerancia a Fallos: ✅ Implementación de un patrón Circuit Breaker Lógico que previene la caída en cascada del servidor principal mediante el desvío de tráfico a la sala de espera estática15.Seguridad y Hardening (T5): ✅ Uso de Rate Limiting en el Proxy Inverso (Nginx) para mitigar ataques de fuerza bruta y denegación de servicio (DDoS) en Capa 716.Automatización y Gestión (T6): ✅ Configuración de servicios systemd para el arranque automático y la recuperación de servicios (Nginx, Redis, App) tras reinicios no programados17.Balanceo de Carga/Proxy (T3/T4): ✅ Configuración de Upstreams en Nginx para abstraer la ubicación real de los servidores de aplicación y permitir escalabilidad horizontal futura18.Monitoreo (T4/T1): ✅ Implementación de un stack de observabilidad completo (Métricas RED) para detectar cuellos de botella y auditar la estabilidad bajo picos de carga19.Networking Avanzado (T3): ✅ Implementación de resolución de nombres interna (mDNS) y segmentación de servicios en distintas VMs/Hosts20.🌐 IV. Diseño de la Infraestructura y Topología4.1. Diseño EsquemáticoEl diseño se basa en la segmentación física de los servicios en 4 VMs distribuidas en hosts distintos, comunicadas por nombre de dominio a través de la red LAN (mDNS)21.VM/HostRolIP Lógica / HostnameSoftware PrincipalCapaSOVM-PROXYGateway / Rate Limiterproxy-server.localNginxAccesoUbuntu 22.04 22VM-APPLógica de Negocio / Workerapp-server.localNode.js v20AplicaciónUbuntu 22.04 23VM-REDISGestión de Estado (Cola)redis-server.localRedis Server 7DatosUbuntu 22.04 24VM-MONMonitoreo y Alertasmonitor-server.localPrometheus + GrafanaGestiónUbuntu 22.04 254.2. Estrategia Adoptada (Opcional)Estrategia de Desacoplamiento: Se separó el Proxy, la Lógica y el Estado en máquinas virtuales distintas. Esto garantiza que la VM-PROXY pueda seguir respondiendo con páginas de Sala de Espera, incluso si la VM-APP se sobrecarga o falla26.Estrategia de Optimización (Redis): Se eligió Redis sobre una base de datos SQL porque las operaciones de incremento/decremento de cola deben ser atómicas y de latencia cero. El uso de la RAM garantiza que el contador de cupos nunca sea el cuello de botella (T4)27.Networking Híbrido: La configuración del descubrimiento de servicios mediante mDNS (.local) permite que las máquinas se encuentren dinámicamente sin depender de IPs estáticas fijas, facilitando la movilidad del despliegue28.📋 V. Guía de Implementación y Puesta en MarchaSigue estos pasos detallados para replicar la infraestructura en 4 máquinas virtuales con Ubuntu 22.04.5.1. Pre-requisitos (Configuración de Red)IMPORTANTE: Ejecutar esto en las 4 VMs (Proxy, App, Redis, Monitor) para que se "vean" por nombre.Actualizar e instalar herramientas de red y Avahi Daemon (mDNS)29:Bashsudo apt update
+sudo apt install -y net-tools curl avahi-daemon libnss-mdns
+Configurar los Hostnames (Ejecutar en cada VM según corresponda)30303030303030303030303030303030:VM Redis: sudo hostnamectl set-hostname redis-serverVM App: sudo hostnamectl set-hostname app-serverVM Proxy: sudo hostnamectl set-hostname proxy-serverVM Monitor: sudo hostnamectl set-hostname monitor-serverReiniciar las VMs y probar conectividad (ej. ping app-server.local)31.5.2. Despliegue Paso a PasoPASO 1: VM-REDIS (Capa de Datos)Instalación: Instalar el servidor Redis32.Bashsudo apt install redis-server -y
+Configuración: Editar el archivo para permitir conexiones externas33.Bashsudo nano /etc/redis/redis.conf
+Buscar la línea: bind 127.0.0.1Cambiar por: bind 0.0.0.0Ejecución: Reiniciar el servicio34.Bashsudo systemctl restart redis-server
+PASO 2: VM-APP (Capa de Lógica)Instalación: Instalar Node.js y dependencias35.Bashsudo apt install nodejs npm -y
+mkdir proyecto-cola && cd proyecto-cola
+npm init -y
+npm install express redis
+Codificación: Crear el archivo de lógica index.js36.Bashnano index.js
+Pegar el siguiente código (Lógica del Portero):JavaScriptconst express = require('express');
+const redis = require('redis');
+const app = express();
+const PORT = 3000;
+const MAX_CAPACITY = 5; // Límite de usuarios concurrentes
+const REDIS_KEY = 'suniver:active_users';
 
-> Asignatura: SIS313: Infraestructura, Plataformas Tecnológicas y Redes
-> Semestre:   2/2025
-> Docente:    Ing. Marcelo Quispe Ortega
+// CONEXIÓN A VM-REDIS
+const client = redis.createClient({
+    socket: { host: 'redis-server.local', port: 6379 }
+});
+client.connect();
 
-================================================================================
-👥  MIEMBROS DEL EQUIPO (GRUPO VIRTUAL QUEUE)
-================================================================================
+app.get('/', async (req, res) => {
+    try {
+        const activeUsers = await client.incr(REDIS_KEY); // Incremento atómico
+        if (activeUsers <= MAX_CAPACITY) {
+            // ESCENARIO: HAY CUPO (LOGIN)
+            setTimeout(() => client.decr(REDIS_KEY), 10000); // Simula sesión de 10s
+            res.send(`<h1>✅ BIENVENIDO (Usuarios: ${activeUsers})</h1>`);
+        } else {
+            // ESCENARIO: SALA DE ESPERA
+            await client.decr(REDIS_KEY); // Revertir conteo
+            res.send(`<h1>🟠 SALA DE ESPERA (Saturado)</h1><meta http-equiv="refresh" content="5">`);
+        }
+    } catch (err) { res.status(503).send('Error del Servidor'); }
+});
 
-1. Duran Chambi Benjamin Ricardo
-   - Rol: Arquitecto de Backend & Proxy (VM-PROXY y VM-APP).
-   - Contacto: Ricardo
-
-2. Escobar Moscoso Jorge Gabriel
-   - Rol: Administrador de Datos (VM-REDIS, Persistencia).
-   - Contacto: GitHub @jogaesmo
-
-3. Onofre Alanoca Roy
-   - Rol: Ingeniero de Observabilidad (VM-MON).
-   - Contacto: GitHub @RoyOnofre
-
-================================================================================
-🎯  I. OBJETIVO DEL PROYECTO
-================================================================================
-
-Diseñar e implementar una arquitectura de "Cola Virtual" (Virtual Waiting Room)
-distribuida para el sistema universitario SUNiver.
-
-El objetivo es interceptar el 100% del tráfico entrante, aplicar Rate Limiting
-para limitar la concurrencia a un umbral seguro (ej. 5 usuarios activos) y
-redirigir el exceso de tráfico a una sala de espera estática HTML. Esto
-garantiza la disponibilidad del servicio crítico bajo ataques o saturación.
-
-================================================================================
-🌐  IV. DISEÑO DE LA INFRAESTRUCTURA (TOPOLOGÍA)
-================================================================================
-
-El sistema se divide en 4 Máquinas Virtuales (VMs) conectadas en red local:
-
-1. VM-PROXY (Gateway):  Nginx. Recibe todo el tráfico y filtra.
-   Hostname: proxy-server.local
-   
-2. VM-APP (Lógica):     Node.js. Decide si muestras Login o Sala de Espera.
-   Hostname: app-server.local
-   
-3. VM-REDIS (Estado):   Redis Server. Guarda el contador de personas en RAM.
-   Hostname: redis-server.local
-   
-4. VM-MON (Monitor):    Prometheus + Grafana. Vigila el sistema.
-   Hostname: monitor-server.local
-
-================================================================================
-📋  V. GUÍA DE IMPLEMENTACIÓN DETALLADA (PASO A PASO)
-================================================================================
-Sigue estos pasos en orden estricto para levantar la infraestructura.
-
---------------------------------------------------------------------------------
-FASE 0: PRE-REQUISITOS DE RED (EN TODAS LAS 4 VMs)
---------------------------------------------------------------------------------
-Objetivo: Que las máquinas se encuentren por nombre (.local) sin usar IPs fijas.
-
-1. Actualiza e instala las herramientas de red y el servicio Avahi (mDNS):
-   $ sudo apt update
-   $ sudo apt install -y net-tools curl avahi-daemon libnss-mdns
-
-2. Verifica la conectividad (Ejemplo desde VM-PROXY hacia VM-APP):
-   $ ping app-server.local
-   (Si responde, el sistema de nombres funciona correctamente).
-
---------------------------------------------------------------------------------
-FASE 1: CONFIGURACIÓN DE DATOS (EN VM-REDIS)
---------------------------------------------------------------------------------
-Hostname requerido: redis-server.local
-
-1. Instalar Redis Server:
-   $ sudo apt install redis-server -y
-
-2. Configurar para permitir conexiones externas (CRÍTICO):
-   Por defecto, Redis solo escucha al propio servidor. Debemos abrirlo.
-   
-   $ sudo nano /etc/redis/redis.conf
-   
-   BUSCA la línea:
-   bind 127.0.0.1
-   
-   CÁMBIALA por:
-   bind 0.0.0.0
-
-3. Reiniciar el servicio para aplicar cambios:
-   $ sudo systemctl restart redis-server
-
-4. (Opcional) Limpiar la base de datos para empezar de cero:
-   $ redis-cli FLUSHALL
-
---------------------------------------------------------------------------------
-FASE 2: CONFIGURACIÓN DE LÓGICA (EN VM-APP)
---------------------------------------------------------------------------------
-Hostname requerido: app-server.local
-
-1. Instalar entorno Node.js:
-   $ sudo apt install nodejs npm -y
-
-2. Crear carpeta del proyecto e instalar dependencias:
-   $ mkdir proyecto-cola && cd proyecto-cola
-   $ npm init -y
-   $ npm install express redis
-
-3. Crear el código del "Portero" (index.js):
-   $ nano index.js
-
-   COPIA Y PEGA EL SIGUIENTE CÓDIGO (Lógica del proyecto):
-   -------------------------------------------------------
-   const express = require('express');
-   const redis = require('redis');
-   const app = express();
-   const PORT = 3000;
-   const MAX_CAPACITY = 5; // Aforo máximo permitido
-   const REDIS_KEY = 'suniver:active_users';
-
-   // 1. Conexión a VM-REDIS
-   const client = redis.createClient({
-       socket: {
-           host: 'redis-server.local', // Hostname de la Fase 1
-           port: 6379
-       }
-   });
-   client.connect();
-   client.on('error', err => console.error('Redis Error:', err));
-
-   // 2. Lógica de Admisión
-   app.get('/', async (req, res) => {
-       try {
-           // Incrementamos contador atómico en Redis
-           const activeUsers = await client.incr(REDIS_KEY);
-
-           if (activeUsers <= MAX_CAPACITY) {
-               // ESCENARIO A: HAY CUPO (PANTALLA VERDE - LOGIN)
-               // Simulamos que el usuario está 10 seg y se va
-               setTimeout(() => client.decr(REDIS_KEY), 10000);
-               
-               res.send(`
-                 <body style="background-color: #2ecc71; color: white; text-align: center; font-family: sans-serif;">
-                   <h1>✅ BIENVENIDO AL SISTEMA</h1>
-                   <p>Usuarios: ${activeUsers} / ${MAX_CAPACITY}</p>
-                 </body>
-               `);
-           } else {
-               // ESCENARIO B: NO HAY CUPO (PANTALLA NARANJA - ESPERA)
-               // Restamos al usuario porque no entró
-               await client.decr(REDIS_KEY);
-               
-               res.send(`
-                 <body style="background-color: #e67e22; color: white; text-align: center; font-family: sans-serif;">
-                   <h1>🟠 SALA DE ESPERA</h1>
-                   <p>Sistema saturado. Recargando...</p>
-                   <meta http-equiv="refresh" content="5">
-                 </body>
-               `);
-           }
-       } catch (error) {
-           res.status(503).send('<h1>🔴 ERROR DE SERVICIO</h1>');
-       }
-   });
-
-   app.listen(PORT, () => console.log(`App en puerto ${PORT}`));
-   -------------------------------------------------------
-
-4. Ejecutar la aplicación en segundo plano:
-   $ nohup node index.js &
-
---------------------------------------------------------------------------------
-FASE 3: CONFIGURACIÓN DE ACCESO Y RATE LIMIT (EN VM-PROXY)
---------------------------------------------------------------------------------
-Hostname requerido: proxy-server.local
-
-1. Instalar Nginx:
-   $ sudo apt install nginx -y
-
-2. Configurar el Rate Limiting (Paso A):
-   Editar configuración principal.
-   $ sudo nano /etc/nginx/nginx.conf
-   
-   DENTRO del bloque "http { ... }", añade esta línea:
-   limit_req_zone $binary_remote_addr zone=one:10m rate=10r/s;
-
-3. Configurar el Proxy Inverso y Upstream (Paso B):
-   Editar el sitio por defecto.
-   $ sudo nano /etc/nginx/sites-available/default
-   
-   BORRA TODO y pega esta configuración optimizada:
-   -------------------------------------------------------
-   # Definimos dónde está la aplicación (VM-APP)
-   upstream backend_app {
-       server app-server.local:3000;
-   }
-
-   server {
-       listen 80 default_server;
-       listen [::]:80 default_server;
-       server_name _;
-
-       location / {
-           # Aplicar el Rate Limit definido antes
-           limit_req zone=one burst=5 nodelay;
-
-           # Enviar tráfico a VM-APP
-           proxy_pass http://backend_app;
-           
-           # Cabeceras para pasar la IP real
-           proxy_set_header Host $host;
-           proxy_set_header X-Real-IP $remote_addr;
-       }
-   }
-   -------------------------------------------------------
-
-4. Verificar y Reiniciar Nginx:
-   $ sudo nginx -t
-   $ sudo systemctl restart nginx
-
---------------------------------------------------------------------------------
-FASE 4: MONITOREO (EN VM-MON)
---------------------------------------------------------------------------------
-Hostname requerido: monitor-server.local
-
-1. Editar configuración de Prometheus para "leer" a VM-APP:
-   $ sudo nano /etc/prometheus/prometheus.yml
-
-2. Añadir bajo "scrape_configs":
-   - job_name: 'node_app'
-     scrape_interval: 5s
-     static_configs:
-       - targets: ['app-server.local:3000']
-
-3. Reiniciar Prometheus:
-   $ sudo systemctl restart prometheus
-
-4. Entrar a Grafana (http://monitor-server.local:3000) y ver métricas.
-
-================================================================================
-⚠️  VI. CÓMO PROBAR QUE FUNCIONA
-================================================================================
-
-1. PRUEBA DE ACCESO NORMAL:
-   - Abre el navegador y ve a: http://proxy-server.local
-   - Deberías ver la pantalla VERDE (Bienvenido) si hay menos de 5 usuarios.
-
-2. PRUEBA DE SATURACIÓN (SALA DE ESPERA):
-   - Abre 6 pestañas diferentes o usa distintos dispositivos.
-   - A partir de la 6ta conexión simultánea, verás la pantalla NARANJA.
-   - Espera 10 segundos (cuando un usuario "sale"), la pantalla naranja se
-     recargará sola y cambiará a verde.
-
-3. PRUEBA DE FALLO (CIRCUIT BREAKER):
-   - Apaga la VM-APP.
-   - Nginx debería devolver un error 502 Bad Gateway, pero si configuras
-     una página de error personalizada en Nginx, podrías mantener el mensaje.
-
-================================================================================
-📚  VII. CONCLUSIONES Y TECNOLOGÍAS USADAS
-================================================================================
-
-- Redis en RAM eliminó la latencia de base de datos SQL.
-- Nginx protegió la aplicación de ataques DDoS capa 7.
-- mDNS permitió desplegar sin configurar IPs estáticas.
-
-FIN DEL DOCUMENTO
+app.listen(PORT, () => console.log(`App en puerto ${PORT}`));
+Ejecución: Correr el servidor en segundo plano37.Bashnohup node index.js &
+PASO 3: VM-PROXY (Capa de Acceso)Instalación: Instalar Nginx38.Bashsudo apt install nginx -y
+Configurar Rate Limit: Editar nginx.conf39.Bashsudo nano /etc/nginx/nginx.conf
+Añadir dentro del bloque http { ... }:limit_req_zone $binary_remote_addr zone=one:10m rate=10r/s;Configurar Proxy Inverso: Editar el sitio default40.Bashsudo nano /etc/nginx/sites-available/default
+Reemplazar contenido con:Nginxupstream backend_app {
+    server app-server.local:3000;
+}
+server {
+    listen 80 default_server;
+    location / {
+        limit_req zone=one burst=5 nodelay; # Rate Limiting
+        proxy_pass http://backend_app;      # Proxy al upstream
+        proxy_set_header Host $host;
+    }
+}
+Ejecución: Reiniciar Nginx41.Bashsudo nginx -t && sudo systemctl restart nginx
+PASO 4: VM-MON (Monitoreo)Configuración: Editar prometheus.yml para scrapear la app42.YAMLscrape_configs:
+  - job_name: 'node_app'
+    scrape_interval: 5s
+    static_configs:
+      - targets: ['app-server.local:3000']
+5.3. Ficheros de Configuración Claveindex.js (en VM-APP): Algoritmo de decisión (If cupo -> Login, Else -> SalaEspera) y conexión remota a redis-server.local43./etc/nginx/nginx.conf (en VM-PROXY): Define la directiva limit_req_zone para el control de acceso44./etc/nginx/sites-available/default (en VM-PROXY): Define el upstream a app-server.local y aplica el limit_req./etc/redis/redis.conf (en VM-REDIS): Establece bind 0.0.0.0 para permitir la comunicación remota con la VM-APP45./etc/prometheus/prometheus.yml (en VM-MON): Configura el scraping de métricas de la VM-APP46.⚠️ VI. Pruebas y ValidaciónPrueba RealizadaResultado EsperadoResultado ObtenidoTest de Estrés (Saturación)Al superar el límite de N usuarios, el usuario N+1 debe ver la pantalla naranja de "Sala de Espera", no el Error 50347.OK: El sistema redirigió correctamente al usuario 6 a la cola.Test de Recuperación AutomáticaCuando un usuario activo abandona el sistema (timeout), la cola debe avanzar automáticamente48.OK: El usuario en espera ingresó automáticamente en el siguiente refresco.Prueba de Monitoreo en VivoGrafana debe mostrar el pico de tráfico y el estancamiento de usuarios activos en el límite máximo49.OK: Dashboard reflejó la curva de saturación en tiempo real.Validación de ConectividadLas VMs deben comunicarse por hostname (.local) independientemente de la IP asignada por el DHCP50.OK: Pings y conexiones de base de datos exitosas por nombre.📚 VII. Conclusiones y Lecciones AprendidasLogro Principal: Demostramos que la escalabilidad y la disponibilidad se logran mediante una arquitectura de software inteligente (Desacoplamiento), no solo con la adición de más hardware. El sistema transformó un escenario de fallo (Error 500) en una experiencia de usuario controlada (Sala de Espera)51.Lección Aprendida: La importancia de Redis (T4) es crítica. Intentar gestionar el estado de la cola en una base de datos tradicional hubiera introducido latencia, convirtiendo al contador en el principal cuello de botella. La gestión en RAM fue esencial52.Mejora Futura: Para un despliegue de producción real, implementaríamos un clúster de Redis (Sentinel) para evitar que la VM-REDIS sea un punto único de fallo, y aseguraríamos la capa de acceso con HTTPS y certificados SSL/TLS en Nginx53.
